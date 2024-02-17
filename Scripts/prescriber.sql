@@ -49,6 +49,9 @@ GROUP BY opioid_drug_flag, p1.specialty_description
 ORDER BY total_claims DESC;
 --ANSWER: Nurse Practitioner
 
+--2d. Difficult Bonus: Do not attempt until you have solved all other problems! For each specialty, report the percentage of total claims by that specialty which are for opioids. Which specialties have a high percentage of opioids?
+
+
 --3a. Which drug (generic_name) had the highest total drug cost?
 SELECT drug.generic_name, SUM(prescription.total_drug_cost) AS drug_cost
 FROM drug
@@ -162,18 +165,41 @@ WHERE prescriber.specialty_description = 'Pain Management'
 --ANSWER: ^^
 
 --7b. Next, report the number of claims per drug per prescriber. Be sure to include all combinations, whether or not the prescriber had any claims. You should report the npi, the drug name, and the number of claims (total_claim_count).
-SELECT prescriber.npi, drug.drug_name, COUNT(prescription.total_claim_count)
+SELECT prescriber.npi, 
+	   drug.drug_name, 
+	   (SELECT
+	   SUM(prescription.total_claim_count) 
+	   FROM prescription
+	   WHERE prescriber.npi = prescription.npi
+	   AND prescription.drug_name = drug.drug_name ) AS total_claims 
 FROM prescriber
 CROSS JOIN drug
 LEFT JOIN prescription
-ON prescriber.npi = prescription.npi
-WHERE prescriber.specialty_description = 'Pain Management'
-	AND prescriber.nppes_provider_city = 'NASHVILLE'
+using (npi)
+	WHERE prescriber.specialty_description ilike 'Pain Management'
+	AND prescriber.nppes_provider_city ilike 'NASHVILLE'
 	AND drug.opioid_drug_flag = 'Y'
-GROUP BY prescriber.npi, drug.drug_name
+GROUP BY drug.drug_name, prescriber.npi
+ORDER BY total_claims ASC
 --ANSWER: ^^
-	
 
+--7c. Finally, if you have not done so already, fill in any missing values for total_claim_count with 0. Hint - Google the COALESCE function.	
+SELECT prescriber.npi, 
+	   drug.drug_name, 
+	   (SELECT(COALESCE(SUM(prescription.total_claim_count),0))
+	   FROM prescription
+	   WHERE prescription.npi = prescriber.npi
+	   AND prescription.drug_name = drug.drug_name) AS total_claims 
+FROM prescriber
+CROSS JOIN drug
+LEFT JOIN prescription
+ON drug.drug_name = prescription.drug_name
+	WHERE prescriber.specialty_description ilike 'Pain Management'
+	AND prescriber.nppes_provider_city ilike 'NASHVILLE'
+	AND drug.opioid_drug_flag = 'Y'
+GROUP BY drug.drug_name, prescriber.npi
+ORDER BY total_claims DESC
+--ANSWER: ^^
 
 
 
